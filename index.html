@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AGENT NEXUS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root { width: 100vw; height: 100vh; overflow: hidden; background: #080B12; }
+    body { color: #C8D6E5; font-family: 'IBM Plex Mono', monospace; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0D1117; }
+    ::-webkit-scrollbar-thumb { background: #00F5FF30; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00F5FF60; }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+    @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+    @keyframes fadeIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+    @keyframes float-particle { 0%,100%{transform:translateY(0) translateX(0)} 33%{transform:translateY(-20px) translateX(10px)} 66%{transform:translateY(10px) translateX(-8px)} }
+    @keyframes count-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes glow-breathe { 0%,100%{filter:drop-shadow(0 0 3px currentColor)} 50%{filter:drop-shadow(0 0 10px currentColor) drop-shadow(0 0 20px currentColor)} }
+    @keyframes packet-travel { 0%{stroke-dashoffset:300;opacity:0} 5%{opacity:1} 90%{opacity:1} 100%{stroke-dashoffset:0;opacity:0} }
+    @keyframes slide-in-right { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes slide-in-left { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes node-spawn { 0%{opacity:0;r:0} 60%{opacity:1;r:22} 100%{opacity:1;r:18} }
+    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+    .pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+    .glow-breathe { animation: glow-breathe 3s ease-in-out infinite; }
+    .slide-in-right { animation: slide-in-right .3s ease forwards; }
+    .slide-in-left { animation: slide-in-left .3s ease forwards; }
+
+    .glass { background: rgba(8,11,18,.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .border-cyan { border: 1px solid rgba(0,245,255,.25); box-shadow: 0 0 12px rgba(0,245,255,.08), inset 0 0 12px rgba(0,245,255,.03); }
+    .border-cyan-bright { border: 1px solid rgba(0,245,255,.6); box-shadow: 0 0 16px rgba(0,245,255,.2), inset 0 0 8px rgba(0,245,255,.05); }
+    .border-green { border: 1px solid rgba(57,255,20,.3); box-shadow: 0 0 10px rgba(57,255,20,.1); }
+    .border-amber { border: 1px solid rgba(255,184,0,.3); box-shadow: 0 0 10px rgba(255,184,0,.1); }
+    .border-purple { border: 1px solid rgba(168,85,247,.3); box-shadow: 0 0 10px rgba(168,85,247,.1); }
+    .border-red { border: 1px solid rgba(255,59,59,.4); box-shadow: 0 0 10px rgba(255,59,59,.15); }
+
+    .team-card { transition: all .2s ease; cursor: pointer; }
+    .team-card:hover { transform: translateX(3px); }
+    .team-card.selected { border-color: rgba(0,245,255,.7) !important; box-shadow: 0 0 20px rgba(0,245,255,.2), inset 0 0 12px rgba(0,245,255,.05) !important; }
+
+    .btn-primary { background: rgba(0,245,255,.1); border: 1px solid rgba(0,245,255,.4); color: #00F5FF; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: .08em; cursor: pointer; transition: all .2s; padding: 8px 14px; border-radius: 4px; }
+    .btn-primary:hover { background: rgba(0,245,255,.2); box-shadow: 0 0 14px rgba(0,245,255,.3); }
+    .btn-secondary { background: rgba(168,85,247,.1); border: 1px solid rgba(168,85,247,.4); color: #A855F7; font-family: 'Space Mono', monospace; font-size: 11px; cursor: pointer; transition: all .2s; padding: 7px 14px; border-radius: 4px; }
+    .btn-secondary:hover { background: rgba(168,85,247,.2); }
+
+    .filter-btn { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: #8892A4; font-family: 'IBM Plex Mono', monospace; font-size: 10px; cursor: pointer; transition: all .2s; padding: 4px 10px; border-radius: 3px; }
+    .filter-btn.active-agent { border-color: rgba(0,245,255,.6); color: #00F5FF; background: rgba(0,245,255,.1); }
+    .filter-btn.active-skill { border-color: rgba(57,255,20,.6); color: #39FF14; background: rgba(57,255,20,.1); }
+    .filter-btn.active-memory { border-color: rgba(255,184,0,.6); color: #FFB800; background: rgba(255,184,0,.1); }
+    .filter-btn.active-task { border-color: rgba(168,85,247,.6); color: #A855F7; background: rgba(168,85,247,.1); }
+
+    .search-input { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); color: #C8D6E5; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 5px 10px; border-radius: 3px; outline: none; transition: border-color .2s; width: 160px; }
+    .search-input:focus { border-color: rgba(0,245,255,.5); box-shadow: 0 0 8px rgba(0,245,255,.15); }
+    .search-input::placeholder { color: #4A5568; }
+
+    .note-area { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); color: #8892A4; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 8px; border-radius: 3px; resize: none; outline: none; transition: border-color .2s; width: 100%; }
+    .note-area:focus { border-color: rgba(0,245,255,.4); color: #C8D6E5; }
+    .note-area::placeholder { color: #2D3748; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .modal { background: #0D1117; border: 1px solid rgba(0,245,255,.4); box-shadow: 0 0 40px rgba(0,245,255,.15), 0 20px 60px rgba(0,0,0,.6); border-radius: 8px; padding: 28px; width: 420px; animation: fadeIn .2s ease; }
+    .modal-input { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); color: #C8D6E5; font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 8px 12px; border-radius: 3px; outline: none; width: 100%; transition: border-color .2s; }
+    .modal-input:focus { border-color: rgba(0,245,255,.5); }
+
+    .activity-item { animation: slide-in-right .3s ease; }
+    .label { font-family: 'Space Mono', monospace; }
+
+    svg .node-g { cursor: pointer; transition: opacity .3s; }
+    svg .node-g:hover .node-shape { filter: brightness(1.4); }
+    svg .node-g.dimmed { opacity: .12; pointer-events: none; }
+    svg .link-line.dimmed { opacity: .06; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ─── CONSTANTS ────────────────────────────────────────────────────────────────
+    const C = { cyan:'#00F5FF', green:'#39FF14', amber:'#FFB800', purple:'#A855F7', red:'#FF3B3B', grey:'#4B5563', bg:'#080B12' };
+    const NODE_COLORS = { agent: C.cyan, skill: C.green, memory: C.amber, task: C.purple };
+    const STATUS_COLORS = { ACTIVE: C.green, IDLE: C.grey, 'SPINNING UP': C.amber, ERROR: C.red };
+
+    const hexPts = (cx, cy, r) =>
+      [0,1,2,3,4,5].map(i => { const a = Math.PI/180*(60*i-30); return `${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`; }).join(' ');
+    const diamondPts = (cx, cy, r) =>
+      `${cx},${cy-r} ${cx+r*0.7},${cy} ${cx},${cy+r} ${cx-r*0.7},${cy}`;
+    const formatUptime = s => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return `${h}h ${m}m`; };
+    const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+    const pick = arr => arr[rnd(0,arr.length-1)];
+    const genSpark = () => Array.from({length:60},()=>rnd(5,100));
+
+    // ─── MOCK DATA ────────────────────────────────────────────────────────────────
+    const TEAMS = [
+      { id:'team-research', name:'Research Squad', emoji:'🔬', agents:['a1','a2','a3','a4'], status:'ACTIVE', taskQueue:7 },
+      { id:'team-dev',      name:'Dev Crew',       emoji:'⚡', agents:['a5','a6','a7'],     status:'ACTIVE', taskQueue:3 },
+      { id:'team-ops',      name:'Ops Unit',       emoji:'🛡️', agents:['a8','a9'],          status:'IDLE',   taskQueue:1 },
+    ];
+
+    const INITIAL_NODES = [
+      // Agents
+      { id:'a1', type:'agent', label:'Aria',  team:'team-research', role:'Lead Researcher', model:'claude-opus-4',   uptime:14432, tasksDone:47 },
+      { id:'a2', type:'agent', label:'Nexus', team:'team-research', role:'Web Analyst',     model:'claude-sonnet-4', uptime:8921,  tasksDone:31 },
+      { id:'a3', type:'agent', label:'Sage',  team:'team-research', role:'Synthesizer',     model:'claude-sonnet-4', uptime:7234,  tasksDone:28 },
+      { id:'a4', type:'agent', label:'Echo',  team:'team-research', role:'Critic',          model:'claude-haiku-4',  uptime:3211,  tasksDone:19 },
+      { id:'a5', type:'agent', label:'Forge', team:'team-dev',      role:'Code Architect',  model:'claude-opus-4',   uptime:21043, tasksDone:112 },
+      { id:'a6', type:'agent', label:'Byte',  team:'team-dev',      role:'Full-Stack Dev',  model:'claude-sonnet-4', uptime:11234, tasksDone:67 },
+      { id:'a7', type:'agent', label:'Lace',  team:'team-dev',      role:'QA Engineer',     model:'claude-haiku-4',  uptime:5678,  tasksDone:43 },
+      { id:'a8', type:'agent', label:'Vance', team:'team-ops',      role:'Orchestrator',    model:'claude-opus-4',   uptime:31022, tasksDone:203 },
+      { id:'a9', type:'agent', label:'Flux',  team:'team-ops',      role:'Monitor',         model:'claude-haiku-4',  uptime:28744, tasksDone:178 },
+      // Skills
+      { id:'sk1',  type:'skill', label:'web-search',      proficiency:{'a1':95,'a2':88,'a3':72} },
+      { id:'sk2',  type:'skill', label:'code-gen',         proficiency:{'a5':97,'a6':91,'a7':68} },
+      { id:'sk3',  type:'skill', label:'summarization',    proficiency:{'a3':94,'a1':82,'a8':75} },
+      { id:'sk4',  type:'skill', label:'reasoning',        proficiency:{'a1':98,'a5':95,'a8':92} },
+      { id:'sk5',  type:'skill', label:'sql-query',        proficiency:{'a6':89,'a9':76} },
+      { id:'sk6',  type:'skill', label:'image-analysis',   proficiency:{'a2':84,'a7':71} },
+      { id:'sk7',  type:'skill', label:'planning',         proficiency:{'a8':96,'a1':88,'a5':85} },
+      { id:'sk8',  type:'skill', label:'critique',         proficiency:{'a4':92,'a3':79} },
+      { id:'sk9',  type:'skill', label:'execution',        proficiency:{'a6':93,'a9':88} },
+      { id:'sk10', type:'skill', label:'memory-synthesis', proficiency:{'a3':91,'a8':87} },
+      // Memory
+      { id:'m1',  type:'memory', label:'User prefers Python 3.11',          source:'a1', ts: Date.now()-3600000,  decay:.9,  tags:['preference','python'] },
+      { id:'m2',  type:'memory', label:'API rate limit: 100 req/min',       source:'a2', ts: Date.now()-7200000,  decay:.8,  tags:['api','limits'] },
+      { id:'m3',  type:'memory', label:'Project deadline: March 15',        source:'a8', ts: Date.now()-1800000,  decay:.95, tags:['deadline','project'] },
+      { id:'m4',  type:'memory', label:'Postgres v14 schema locked',        source:'a5', ts: Date.now()-10800000, decay:.7,  tags:['db','schema'] },
+      { id:'m5',  type:'memory', label:'Client wants dark mode UI',         source:'a6', ts: Date.now()-5400000,  decay:.85, tags:['ui','preference'] },
+      { id:'m6',  type:'memory', label:'Test coverage must be >80%',        source:'a7', ts: Date.now()-9000000,  decay:.72, tags:['testing','quality'] },
+      { id:'m7',  type:'memory', label:'Staging env resets at 03:00 UTC',   source:'a9', ts: Date.now()-14400000, decay:.6,  tags:['ops','schedule'] },
+      { id:'m8',  type:'memory', label:'Auth uses JWT RS256 tokens',        source:'a5', ts: Date.now()-21600000, decay:.5,  tags:['auth','security'] },
+      { id:'m9',  type:'memory', label:'Research sources: arXiv, Semantic Scholar', source:'a1', ts:Date.now()-900000, decay:.98, tags:['research','sources'] },
+      // Tasks
+      { id:'t1', type:'task', label:'summarize-docs',       status:'ACTIVE', assigned:['a3','a1'], subtasks:4, completed:2 },
+      { id:'t2', type:'task', label:'build-auth-module',    status:'ACTIVE', assigned:['a5','a6'], subtasks:8, completed:5 },
+      { id:'t3', type:'task', label:'db-schema-migration',  status:'ACTIVE', assigned:['a6','a9'], subtasks:3, completed:1 },
+      { id:'t4', type:'task', label:'threat-model-review',  status:'DONE',   assigned:['a8','a4'], subtasks:6, completed:6 },
+    ];
+
+    const INITIAL_EDGES = [
+      // Agent→Skill
+      {id:'e1', s:'a1',s2:'sk1',type:'has_skill',w:.95}, {id:'e2', s:'a2',s2:'sk1',type:'has_skill',w:.88},
+      {id:'e3', s:'a3',s2:'sk1',type:'has_skill',w:.72}, {id:'e4', s:'a5',s2:'sk2',type:'has_skill',w:.97},
+      {id:'e5', s:'a6',s2:'sk2',type:'has_skill',w:.91}, {id:'e6', s:'a7',s2:'sk2',type:'has_skill',w:.68},
+      {id:'e7', s:'a3',s2:'sk3',type:'has_skill',w:.94}, {id:'e8', s:'a1',s2:'sk3',type:'has_skill',w:.82},
+      {id:'e9', s:'a8',s2:'sk3',type:'has_skill',w:.75}, {id:'e10',s:'a1',s2:'sk4',type:'has_skill',w:.98},
+      {id:'e11',s:'a5',s2:'sk4',type:'has_skill',w:.95}, {id:'e12',s:'a8',s2:'sk4',type:'has_skill',w:.92},
+      {id:'e13',s:'a6',s2:'sk5',type:'has_skill',w:.89}, {id:'e14',s:'a9',s2:'sk5',type:'has_skill',w:.76},
+      {id:'e15',s:'a2',s2:'sk6',type:'has_skill',w:.84}, {id:'e16',s:'a7',s2:'sk6',type:'has_skill',w:.71},
+      {id:'e17',s:'a8',s2:'sk7',type:'has_skill',w:.96}, {id:'e18',s:'a1',s2:'sk7',type:'has_skill',w:.88},
+      {id:'e19',s:'a5',s2:'sk7',type:'has_skill',w:.85}, {id:'e20',s:'a4',s2:'sk8',type:'has_skill',w:.92},
+      {id:'e21',s:'a3',s2:'sk8',type:'has_skill',w:.79}, {id:'e22',s:'a6',s2:'sk9',type:'has_skill',w:.93},
+      {id:'e23',s:'a9',s2:'sk9',type:'has_skill',w:.88}, {id:'e24',s:'a3',s2:'sk10',type:'has_skill',w:.91},
+      {id:'e25',s:'a8',s2:'sk10',type:'has_skill',w:.87},
+      // Agent→Memory
+      {id:'e26',s:'a1',s2:'m1',type:'recalls'}, {id:'e27',s:'a2',s2:'m2',type:'recalls'},
+      {id:'e28',s:'a8',s2:'m3',type:'recalls'}, {id:'e29',s:'a5',s2:'m4',type:'recalls'},
+      {id:'e30',s:'a6',s2:'m5',type:'recalls'}, {id:'e31',s:'a7',s2:'m6',type:'recalls'},
+      {id:'e32',s:'a9',s2:'m7',type:'recalls'}, {id:'e33',s:'a5',s2:'m8',type:'recalls'},
+      {id:'e34',s:'a1',s2:'m9',type:'recalls'},
+      // Agent→Task
+      {id:'e35',s:'a3',s2:'t1',type:'assigned_to'}, {id:'e36',s:'a1',s2:'t1',type:'assigned_to'},
+      {id:'e37',s:'a5',s2:'t2',type:'assigned_to'}, {id:'e38',s:'a6',s2:'t2',type:'assigned_to'},
+      {id:'e39',s:'a6',s2:'t3',type:'assigned_to'}, {id:'e40',s:'a9',s2:'t3',type:'assigned_to'},
+      {id:'e41',s:'a8',s2:'t4',type:'assigned_to'}, {id:'e42',s:'a4',s2:'t4',type:'assigned_to'},
+      // Skill→Skill
+      {id:'e43',s:'sk1',s2:'sk3',type:'related_to'}, {id:'e44',s:'sk4',s2:'sk7',type:'related_to'},
+      {id:'e45',s:'sk2',s2:'sk9',type:'related_to'}, {id:'e46',s:'sk3',s2:'sk10',type:'related_to'},
+      {id:'e47',s:'sk5',s2:'sk2',type:'related_to'}, {id:'e48',s:'sk8',s2:'sk4',type:'related_to'},
+    ];
+
+    const INITIAL_FEED = [
+      { id:1, ts: Date.now()-10000, msg:'Agent Aria acquired skill: reasoning' },
+      { id:2, ts: Date.now()-25000, msg:'Memory node m8 decay threshold reached' },
+      { id:3, ts: Date.now()-45000, msg:'Task build-auth-module: 5/8 subtasks done' },
+      { id:4, ts: Date.now()-70000, msg:'Agent Vance completed: threat-model-review' },
+      { id:5, ts: Date.now()-95000, msg:'New memory synthesized: API rate limit' },
+    ];
+
+    const LIVE_EVENTS = [
+      n => `Agent ${n} signaled heartbeat`,
+      n => `Edge pulsed: ${n} → reasoning`,
+      n => `Memory node consolidated by ${n}`,
+      n => `Skill proficiency updated for ${n}`,
+      n => `Context shared between team members`,
+      n => `${n} completed micro-task`,
+      n => `New inference cached by ${n}`,
+    ];
+
+    const AGENT_NAMES = ['Aria','Nexus','Sage','Echo','Forge','Byte','Lace','Vance','Flux'];
+    const SKILL_LABELS = ['web-search','code-gen','summarization','reasoning','sql-query','image-analysis','planning','critique','execution','memory-synthesis'];
+
+    // ─── LINK STYLE ───────────────────────────────────────────────────────────────
+    const getLinkStyle = type => ({
+      has_skill:   { stroke: C.cyan,   dash: 'none',  width: 1.2, opacity: .45 },
+      recalls:     { stroke: C.amber,  dash: '5,4',   width: 1.0, opacity: .40 },
+      assigned_to: { stroke: C.purple, dash: 'none',  width: 1.4, opacity: .50 },
+      related_to:  { stroke: '#4B5563',dash: '2,3',   width: .7,  opacity: .35 },
+    }[type] || { stroke:'#fff', dash:'none', width:1, opacity:.3 });
+
+    // ─── SPARKLINE ────────────────────────────────────────────────────────────────
+    const SparkLine = ({ data, color = C.cyan, height = 28, width = 120 }) => {
+      if (!data || !data.length) return null;
+      const max = Math.max(...data), min = Math.min(...data);
+      const range = max - min || 1;
+      const pts = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * width;
+        const y = height - ((v - min) / range) * height;
+        return `${x},${y}`;
+      }).join(' ');
+      return (
+        <svg width={width} height={height} style={{display:'block'}}>
+          <defs>
+            <linearGradient id={`sg-${color.slice(1)}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity=".3" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polyline points={pts} fill="none" stroke={color} strokeWidth="1.2" strokeLinejoin="round" opacity=".8" />
+        </svg>
+      );
+    };
+
+    // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
+    const StatusBadge = ({ status }) => {
+      const col = STATUS_COLORS[status] || C.grey;
+      return (
+        <span style={{ fontFamily:'Space Mono', fontSize:9, letterSpacing:'.1em', padding:'2px 7px', borderRadius:3,
+          border:`1px solid ${col}80`, color: col, background: `${col}18`, whiteSpace:'nowrap' }}>
+          {status}
+        </span>
+      );
+    };
+
+    // ─── TEAM CARD ────────────────────────────────────────────────────────────────
+    const TeamCard = ({ team, selected, sparkData, onClick }) => {
+      const borderCol = STATUS_COLORS[team.status] || C.grey;
+      return (
+        <div className={`team-card glass ${selected ? 'selected' : ''}`}
+          style={{ border:`1px solid ${selected ? C.cyan : borderCol+'50'}`, borderRadius:5, padding:'10px 12px',
+            boxShadow: selected ? `0 0 20px ${C.cyan}25,inset 0 0 12px ${C.cyan}05` : `0 0 8px ${borderCol}15` }}
+          onClick={() => onClick(team.id)}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <span style={{fontSize:16}}>{team.emoji}</span>
+              <span style={{ fontFamily:'Space Mono', fontSize:11, fontWeight:700, color:'#E2E8F0', letterSpacing:'.04em' }}>{team.name}</span>
+            </div>
+            <StatusBadge status={team.status} />
+          </div>
+          <div style={{ display:'flex', gap:16, marginBottom:7 }}>
+            <div style={{ fontSize:10, color:'#5A6A7E' }}>
+              <span style={{ color:'#8892A4' }}>{team.agents.length}</span> agents
+            </div>
+            <div style={{ fontSize:10, color:'#5A6A7E' }}>
+              queue <span style={{ color: team.taskQueue > 5 ? C.amber : '#8892A4' }}>{team.taskQueue}</span>
+            </div>
+          </div>
+          <SparkLine data={sparkData} color={selected ? C.cyan : borderCol} height={24} width={180} />
+        </div>
+      );
+    };
+
+    // ─── LEFT PANEL ───────────────────────────────────────────────────────────────
+    const LeftPanel = ({ teams, selectedTeam, sparkData, onSelectTeam, onSpinUp }) => (
+      <div className="glass border-cyan slide-in-left" style={{ width:'25%', height:'100%', display:'flex', flexDirection:'column', borderRadius:'0 0 0 0', borderTop:0, borderBottom:0, borderLeft:0 }}>
+        {/* Header */}
+        <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid rgba(0,245,255,.12)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+            <span className="pulse-dot" style={{ width:7, height:7, borderRadius:'50%', background:C.green, display:'inline-block', flexShrink:0 }} />
+            <span style={{ fontFamily:'Space Mono', fontSize:12, fontWeight:700, letterSpacing:'.14em', color:C.cyan }}>ACTIVE TEAMS</span>
+          </div>
+          <div style={{ fontSize:10, color:'#4A5568', letterSpacing:'.06em' }}>{teams.length} TEAMS REGISTERED</div>
+        </div>
+
+        {/* Team List */}
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 12px 0', display:'flex', flexDirection:'column', gap:8 }}>
+          {teams.map(t => (
+            <TeamCard key={t.id} team={t} selected={selectedTeam === t.id}
+              sparkData={sparkData[t.id] || []} onClick={onSelectTeam} />
+          ))}
+        </div>
+
+        {/* Spin Up Button */}
+        <div style={{ padding:'12px 12px 14px', borderTop:'1px solid rgba(0,245,255,.1)', flexShrink:0 }}>
+          <button className="btn-primary" style={{ width:'100%', textAlign:'center' }} onClick={onSpinUp}>
+            + SPIN UP TEAM
+          </button>
+        </div>
+      </div>
+    );
+
+    // ─── GRAPH PANEL ─────────────────────────────────────────────────────────────
+    const GraphPanel = ({ nodes, edges, selectedNode, onSelectNode, filters, searchTerm, focusTeam }) => {
+      const svgRef = useRef(null);
+      const simRef = useRef(null);
+      const gRef = useRef(null);
+      const zoomRef = useRef(null);
+      const nodeMapRef = useRef({});
+      const linkElsRef = useRef(null);
+      const nodeElsRef = useRef(null);
+      const packetTimerRef = useRef(null);
+      const onSelectNodeRef = useRef(onSelectNode);
+      useEffect(() => { onSelectNodeRef.current = onSelectNode; }, [onSelectNode]);
+      const prevNodeCountRef = useRef(nodes.length);
+
+      const visibleNodeIds = useMemo(() => {
+        const base = nodes.filter(n => filters[n.type]);
+        if (!searchTerm) return new Set(base.map(n => n.id));
+        const lc = searchTerm.toLowerCase();
+        const matched = new Set(base.filter(n => n.label.toLowerCase().includes(lc)).map(n => n.id));
+        return matched;
+      }, [nodes, filters, searchTerm]);
+
+      // Init simulation once
+      useEffect(() => {
+        const svg = d3.select(svgRef.current);
+        const W = svgRef.current.clientWidth;
+        const H = svgRef.current.clientHeight;
+
+        svg.selectAll('*').remove();
+
+        // Defs: glow filters + arrowhead
+        const defs = svg.append('defs');
+        const glows = [
+          ['glow-cyan',   C.cyan,   4, 8],
+          ['glow-green',  C.green,  4, 8],
+          ['glow-amber',  C.amber,  4, 8],
+          ['glow-purple', C.purple, 4, 8],
+        ];
+        glows.forEach(([id, col, std, str]) => {
+          const f = defs.append('filter').attr('id', id).attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+          f.append('feGaussianBlur').attr('stdDeviation', std).attr('result','blur');
+          const merge = f.append('feMerge');
+          merge.append('feMergeNode').attr('in','blur');
+          merge.append('feMergeNode').attr('in','SourceGraphic');
+        });
+
+        // Background particles
+        const bgG = svg.append('g').attr('class','bg-particles');
+        for (let i = 0; i < 60; i++) {
+          const x = Math.random()*W, y = Math.random()*H;
+          const r = Math.random()*1.5+0.3;
+          bgG.append('circle').attr('cx',x).attr('cy',y).attr('r',r)
+            .attr('fill', pick(['#00F5FF','#39FF14','#FFB800','#A855F7']))
+            .attr('opacity', Math.random()*0.3+0.05)
+            .style('animation',`float-particle ${rnd(4,10)}s ease-in-out infinite`)
+            .style('animation-delay',`${Math.random()*5}s`);
+        }
+
+        // Zoom group
+        const g = svg.append('g').attr('class','zoom-group');
+        gRef.current = g;
+
+        // Link and node groups
+        g.append('g').attr('class','links-group');
+        g.append('g').attr('class','nodes-group');
+
+        // Zoom behavior
+        const zoom = d3.zoom().scaleExtent([.08,4])
+          .on('zoom', ev => g.attr('transform', ev.transform));
+        svg.call(zoom);
+        zoomRef.current = zoom;
+
+        // Build simulation nodes
+        const snodes = nodes.map(n => ({ ...n, x: W/2+rnd(-200,200), y: H/2+rnd(-200,200) }));
+        snodes.forEach(n => nodeMapRef.current[n.id] = n);
+
+        // Build links
+        const slinks = edges.map(e => ({ ...e, source: e.s, target: e.s2 }));
+
+        const sim = d3.forceSimulation(snodes)
+          .force('link', d3.forceLink(slinks).id(d=>d.id).distance(d => {
+            if (d.type==='recalls') return 100;
+            if (d.type==='related_to') return 120;
+            if (d.type==='assigned_to') return 90;
+            return 80;
+          }).strength(.25))
+          .force('charge', d3.forceManyBody().strength(-180))
+          .force('collide', d3.forceCollide(36))
+          .force('center', d3.forceCenter(W/2, H/2).strength(.04));
+
+        simRef.current = sim;
+
+        renderLinks(g, slinks);
+        renderNodes(g, snodes, sim);
+
+        sim.on('tick', () => {
+          if (linkElsRef.current) linkElsRef.current
+            .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+            .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+          if (nodeElsRef.current) nodeElsRef.current
+            .attr('transform', d=>`translate(${d.x},${d.y})`);
+        });
+
+        // Packet animation loop
+        startPackets(g, slinks);
+
+        return () => { sim.stop(); clearInterval(packetTimerRef.current); svg.selectAll('*').remove(); };
+      }, []);
+
+      // Update visibility when filters/search change
+      useEffect(() => {
+        if (!nodeElsRef.current || !linkElsRef.current) return;
+        nodeElsRef.current.classed('dimmed', d => !visibleNodeIds.has(d.id));
+        linkElsRef.current.classed('dimmed', d => {
+          const sid = typeof d.source==='object'?d.source.id:d.source;
+          const tid = typeof d.target==='object'?d.target.id:d.target;
+          return !visibleNodeIds.has(sid) || !visibleNodeIds.has(tid);
+        });
+      }, [visibleNodeIds]);
+
+      // Highlight selected node
+      useEffect(() => {
+        if (!nodeElsRef.current) return;
+        nodeElsRef.current.selectAll('.node-shape')
+          .attr('stroke-width', d => selectedNode && d.id === selectedNode.id ? 3 : 1.5)
+          .attr('stroke-opacity', d => selectedNode && d.id === selectedNode.id ? 1 : .85);
+      }, [selectedNode]);
+
+      // Focus on team
+      useEffect(() => {
+        if (!focusTeam || !gRef.current || !simRef.current || !svgRef.current) return;
+        const teamNodes = Object.values(nodeMapRef.current).filter(n => n.team === focusTeam);
+        if (!teamNodes.length) return;
+        const cx = teamNodes.reduce((s,n)=>s+n.x,0)/teamNodes.length;
+        const cy = teamNodes.reduce((s,n)=>s+n.y,0)/teamNodes.length;
+        const W = svgRef.current.clientWidth, H = svgRef.current.clientHeight;
+        d3.select(svgRef.current).transition().duration(700).ease(d3.easeCubicInOut)
+          .call(zoomRef.current.transform, d3.zoomIdentity.translate(W/2-cx, H/2-cy).scale(1.4));
+      }, [focusTeam]);
+
+      function renderLinks(g, slinks) {
+        const lg = g.select('.links-group');
+        lg.selectAll('*').remove();
+        const ls = lg.selectAll('line').data(slinks, d=>d.id).enter().append('line')
+          .attr('class','link-line')
+          .each(function(d) {
+            const st = getLinkStyle(d.type);
+            d3.select(this)
+              .attr('stroke', st.stroke)
+              .attr('stroke-width', st.width)
+              .attr('stroke-dasharray', st.dash)
+              .attr('opacity', st.opacity);
+          });
+        linkElsRef.current = ls;
+      }
+
+      function renderNodes(g, snodes, sim) {
+        const ng = g.select('.nodes-group');
+        ng.selectAll('*').remove();
+        const ns = ng.selectAll('g.node-g').data(snodes, d=>d.id).enter().append('g')
+          .attr('class','node-g')
+          .call(d3.drag()
+            .on('start', (ev,d) => { if(!ev.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+            .on('drag',  (ev,d) => { d.fx=ev.x; d.fy=ev.y; })
+            .on('end',   (ev,d) => { if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+          )
+          .on('click', (ev,d) => { ev.stopPropagation(); onSelectNodeRef.current(d); });
+
+        // Draw shapes
+        ns.each(function(d) {
+          const el = d3.select(this);
+          const col = NODE_COLORS[d.type] || '#fff';
+          const fid = `glow-${d.type==='agent'?'cyan':d.type==='skill'?'green':d.type==='memory'?'amber':'purple'}`;
+
+          if (d.type === 'agent') {
+            el.append('polygon').attr('class','node-shape').attr('points', hexPts(0,0,18))
+              .attr('fill', `${col}18`).attr('stroke', col).attr('stroke-width',1.5).attr('filter',`url(#${fid})`);
+          } else if (d.type === 'skill') {
+            el.append('circle').attr('class','node-shape').attr('r',13)
+              .attr('fill', `${col}18`).attr('stroke', col).attr('stroke-width',1.5).attr('filter',`url(#${fid})`);
+          } else if (d.type === 'memory') {
+            el.append('polygon').attr('class','node-shape').attr('points', diamondPts(0,0,15))
+              .attr('fill', `${col}18`).attr('stroke', col).attr('stroke-width',1.5).attr('filter',`url(#${fid})`);
+          } else if (d.type === 'task') {
+            el.append('rect').attr('class','node-shape').attr('x',-22).attr('y',-11).attr('width',44).attr('height',22).attr('rx',5)
+              .attr('fill', `${col}18`).attr('stroke', col).attr('stroke-width',1.5).attr('filter',`url(#${fid})`);
+          }
+
+          // Icon
+          const icon = {agent:'◈',skill:'●',memory:'◆',task:'▣'}[d.type]||'○';
+          el.append('text').text(icon).attr('text-anchor','middle').attr('dominant-baseline','central')
+            .attr('fill', col).attr('font-size', d.type==='task'?9:10).attr('pointer-events','none').attr('opacity',.7);
+
+          // Label
+          el.append('text').text(d.label).attr('y', d.type==='agent'?25:d.type==='task'?18:20)
+            .attr('text-anchor','middle').attr('fill','#6B7A8D').attr('font-size','8.5px')
+            .attr('font-family','IBM Plex Mono').attr('pointer-events','none');
+        });
+
+        nodeElsRef.current = ns;
+      }
+
+      function startPackets(g, slinks) {
+        clearInterval(packetTimerRef.current);
+        packetTimerRef.current = setInterval(() => {
+          const visLinks = slinks.filter(l => l.type !== 'related_to');
+          if (!visLinks.length) return;
+          const lnk = pick(visLinks);
+          const col = getLinkStyle(lnk.type).stroke;
+          const sx = typeof lnk.source==='object'?lnk.source.x:0;
+          const sy = typeof lnk.source==='object'?lnk.source.y:0;
+          const tx = typeof lnk.target==='object'?lnk.target.x:0;
+          const ty = typeof lnk.target==='object'?lnk.target.y:0;
+          const pkt = g.select('.links-group').append('circle')
+            .attr('r',2.5).attr('fill',col).attr('opacity',.9)
+            .attr('filter',`drop-shadow(0 0 4px ${col})`);
+          const dur = 800 + Math.random()*600;
+          pkt.attr('cx',sx).attr('cy',sy)
+            .transition().duration(dur).ease(d3.easeLinear)
+            .attr('cx',tx).attr('cy',ty).attr('opacity',0)
+            .remove();
+        }, 600);
+      }
+
+      // Incrementally add new nodes/edges when SpinUp adds them
+      useEffect(() => {
+        const currentCount = nodes.length;
+        if (currentCount <= prevNodeCountRef.current) { prevNodeCountRef.current = currentCount; return; }
+        const sim = simRef.current;
+        const g = gRef.current;
+        if (!sim || !g) { prevNodeCountRef.current = currentCount; return; }
+        const W = svgRef.current?.clientWidth || 800;
+        const H = svgRef.current?.clientHeight || 600;
+        const newNodes = nodes.slice(prevNodeCountRef.current).map(n => ({
+          ...n,
+          x: W/2 + rnd(-120,120),
+          y: H/2 + rnd(-120,120)
+        }));
+        newNodes.forEach(n => nodeMapRef.current[n.id] = n);
+        const allSimNodes = [...sim.nodes(), ...newNodes];
+        const newEdges = edges.map(e => ({ ...e, source: e.s, target: e.s2 }));
+        sim.nodes(allSimNodes);
+        sim.force('link').links(newEdges);
+        renderNodes(g, allSimNodes, sim);
+        renderLinks(g, newEdges);
+        startPackets(g, newEdges);
+        sim.alpha(.4).restart();
+        prevNodeCountRef.current = currentCount;
+      }, [nodes.length]);
+
+      return (
+        <div style={{ flex:1, height:'100%', display:'flex', flexDirection:'column', position:'relative', borderLeft:'1px solid rgba(0,245,255,.1)', borderRight:'1px solid rgba(0,245,255,.1)' }}>
+          {/* Graph SVG */}
+          <svg ref={svgRef} style={{ flex:1, width:'100%', display:'block', cursor:'grab' }}
+            onClick={() => onSelectNodeRef.current(null)} />
+        </div>
+      );
+    };
+
+    // ─── MINI MAP ─────────────────────────────────────────────────────────────────
+    const MiniMap = ({ nodes }) => {
+      if (!nodes.length) return null;
+      const scale = 0.18;
+      return (
+        <div style={{ border:'1px solid rgba(0,245,255,.15)', borderRadius:3, overflow:'hidden', width:110, height:70, background:'rgba(0,0,0,.4)', flexShrink:0, position:'relative' }}>
+          <svg width={110} height={70}>
+            {nodes.slice(0,40).map(n => {
+              const col = NODE_COLORS[n.type] || '#fff';
+              const x = 55 + ((n.x||0)-400)*scale;
+              const y = 35 + ((n.y||0)-300)*scale;
+              return <circle key={n.id} cx={x} cy={y} r={2} fill={col} opacity={.7} />;
+            })}
+          </svg>
+          <div style={{ position:'absolute', top:2, left:4, fontSize:8, color:'#3A4A5A', fontFamily:'Space Mono' }}>MINIMAP</div>
+        </div>
+      );
+    };
+
+    // ─── NODE DETAIL ──────────────────────────────────────────────────────────────
+    const NodeDetail = ({ node, nodes, notes, onNoteChange }) => {
+      if (!node) return (
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'#2D3748', fontSize:11, fontFamily:'Space Mono', letterSpacing:'.08em', textAlign:'center', padding:20 }}>
+          SELECT A NODE<br/><span style={{fontSize:9,marginTop:6,display:'block',opacity:.6}}>click any node in the graph</span>
+        </div>
+      );
+
+      const col = NODE_COLORS[node.type] || '#fff';
+      const typeIcon = {agent:'◈',skill:'●',memory:'◆',task:'▣'}[node.type]||'○';
+
+      return (
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 14px' }}>
+          {/* Node header */}
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, paddingBottom:10, borderBottom:`1px solid ${col}25` }}>
+            <span style={{ fontSize:18, color:col, filter:`drop-shadow(0 0 6px ${col})` }}>{typeIcon}</span>
+            <div>
+              <div style={{ fontFamily:'Space Mono', fontSize:12, fontWeight:700, color:col, letterSpacing:'.06em' }}>{node.label}</div>
+              <div style={{ fontSize:9, color:'#4A5568', marginTop:1, textTransform:'uppercase', letterSpacing:'.1em' }}>{node.type} · {node.id}</div>
+            </div>
+          </div>
+
+          {/* Type-specific details */}
+          {node.type === 'agent' && <AgentDetail node={node} />}
+          {node.type === 'skill' && <SkillDetail node={node} nodes={nodes} />}
+          {node.type === 'memory' && <MemoryDetail node={node} />}
+          {node.type === 'task' && <TaskDetail node={node} nodes={nodes} />}
+
+          {/* Smart Notes */}
+          <div style={{ marginTop:14 }}>
+            <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', marginBottom:5, fontFamily:'Space Mono' }}>
+              📝 SMART NOTES
+            </div>
+            <textarea className="note-area" rows={4} placeholder="Annotate this node..."
+              value={notes[node.id] || ''} onChange={e => onNoteChange(node.id, e.target.value)} />
+          </div>
+        </div>
+      );
+    };
+
+    const Row = ({ label, value, color }) => (
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5, fontSize:10 }}>
+        <span style={{ color:'#4A5568' }}>{label}</span>
+        <span style={{ color: color || '#8892A4' }}>{value}</span>
+      </div>
+    );
+
+    const AgentDetail = ({ node }) => (
+      <div>
+        <Row label="Role" value={node.role} />
+        <Row label="Model" value={node.model} color={C.cyan} />
+        <Row label="Uptime" value={formatUptime(node.uptime)} />
+        <Row label="Tasks Done" value={node.tasksDone} color={C.green} />
+        <Row label="Team" value={node.team} />
+      </div>
+    );
+
+    const SkillDetail = ({ node, nodes }) => {
+      const agents = Object.entries(node.proficiency || {});
+      return (
+        <div>
+          <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', marginBottom:8, fontFamily:'Space Mono' }}>PROFICIENCY BY AGENT</div>
+          {agents.map(([aid, pct]) => {
+            const a = nodes.find(n=>n.id===aid);
+            return (
+              <div key={aid} style={{ marginBottom:6 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, marginBottom:2 }}>
+                  <span style={{ color:'#8892A4' }}>{a?a.label:aid}</span>
+                  <span style={{ color: C.green }}>{pct}%</span>
+                </div>
+                <div style={{ height:3, background:'#1A2030', borderRadius:2 }}>
+                  <div style={{ height:'100%', width:`${pct}%`, background: pct>85?C.green:pct>60?C.amber:C.grey, borderRadius:2 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    const MemoryDetail = ({ node }) => {
+      const age = Math.floor((Date.now()-node.ts)/60000);
+      return (
+        <div>
+          <div style={{ fontSize:11, color:'#8892A4', marginBottom:8, lineHeight:1.6, padding:'8px', background:'rgba(255,184,0,.05)', border:'1px solid rgba(255,184,0,.15)', borderRadius:3 }}>
+            "{node.label}"
+          </div>
+          <Row label="Source" value={node.source} color={C.amber} />
+          <Row label="Age" value={`${age} min ago`} />
+          <Row label="Decay Score" value={`${Math.floor(node.decay*100)}%`} color={node.decay>.7?C.green:node.decay>.4?C.amber:C.red} />
+          <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:4 }}>
+            {(node.tags||[]).map(t => (
+              <span key={t} style={{ fontSize:9, padding:'2px 6px', borderRadius:2, background:'rgba(255,184,0,.1)', border:'1px solid rgba(255,184,0,.2)', color:C.amber }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    const TaskDetail = ({ node, nodes }) => {
+      const pct = Math.floor((node.completed/node.subtasks)*100);
+      const assigned = (node.assigned||[]).map(aid => nodes.find(n=>n.id===aid)).filter(Boolean);
+      return (
+        <div>
+          <Row label="Status" value={node.status} color={node.status==='ACTIVE'?C.green:node.status==='DONE'?C.cyan:C.amber} />
+          <Row label="Progress" value={`${node.completed}/${node.subtasks} subtasks`} />
+          <div style={{ height:4, background:'#1A2030', borderRadius:2, marginBottom:8, marginTop:2 }}>
+            <div style={{ height:'100%', width:`${pct}%`, background: pct===100?C.cyan:C.purple, borderRadius:2 }} />
+          </div>
+          <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', marginBottom:5, fontFamily:'Space Mono' }}>ASSIGNED AGENTS</div>
+          {assigned.map(a => (
+            <div key={a.id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, fontSize:10 }}>
+              <span style={{ color:C.cyan }}>◈</span>
+              <span style={{ color:'#8892A4' }}>{a.label}</span>
+              <span style={{ fontSize:9, color:'#4A5568' }}>·{a.role}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    // ─── ACTIVITY FEED ────────────────────────────────────────────────────────────
+    const ActivityFeed = ({ events }) => (
+      <div style={{ borderTop:'1px solid rgba(0,245,255,.1)', padding:'10px 14px', flexShrink:0 }}>
+        <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', marginBottom:6, fontFamily:'Space Mono' }}>RECENT ACTIVITY</div>
+        <div style={{ maxHeight:100, overflowY:'auto', display:'flex', flexDirection:'column', gap:3 }}>
+          {events.slice(0,8).map(ev => (
+            <div key={ev.id} className="activity-item" style={{ fontSize:9, color:'#5A6A7E', lineHeight:1.5, padding:'2px 0', borderBottom:'1px solid rgba(255,255,255,.03)' }}>
+              <span style={{ color:'#3A4A5A', marginRight:6 }}>
+                {new Date(ev.ts).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+              </span>
+              {ev.msg}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    // ─── RIGHT PANEL ──────────────────────────────────────────────────────────────
+    const RightPanel = ({ selectedNode, nodes, notes, onNoteChange, feed, sparkNodes }) => (
+      <div className="glass border-cyan slide-in-right" style={{ width:'25%', height:'100%', display:'flex', flexDirection:'column', borderTop:0, borderBottom:0, borderRight:0 }}>
+        {/* Header */}
+        <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid rgba(0,245,255,.12)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+            <span className="pulse-dot" style={{ width:7, height:7, borderRadius:'50%', background:C.purple, display:'inline-block', flexShrink:0 }} />
+            <span style={{ fontFamily:'Space Mono', fontSize:12, fontWeight:700, letterSpacing:'.14em', color:C.purple }}>CONTEXT STREAM</span>
+          </div>
+          <div style={{ fontSize:10, color:'#4A5568', letterSpacing:'.06em' }}>
+            {selectedNode ? `${selectedNode.type.toUpperCase()} · ${selectedNode.id}` : 'NO NODE SELECTED'}
+          </div>
+        </div>
+
+        {/* Node detail */}
+        <NodeDetail node={selectedNode} nodes={nodes} notes={notes} onNoteChange={onNoteChange} />
+
+        {/* Mini map */}
+        <div style={{ padding:'8px 14px', borderTop:'1px solid rgba(0,245,255,.08)', flexShrink:0 }}>
+          <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', marginBottom:6, fontFamily:'Space Mono' }}>GRAPH MINIMAP</div>
+          <MiniMap nodes={sparkNodes} />
+        </div>
+
+        {/* Activity feed */}
+        <ActivityFeed events={feed} />
+      </div>
+    );
+
+    // ─── TOP BAR ──────────────────────────────────────────────────────────────────
+    const TopBar = ({ stats, animDone }) => {
+      const items = [
+        { label:'Total Agents',  value: stats.agents,  color: C.cyan },
+        { label:'Active Tasks',  value: stats.tasks,   color: C.purple },
+        { label:'Memory Nodes',  value: stats.memory,  color: C.amber },
+        { label:'Skills Mapped', value: stats.skills,  color: C.green },
+      ];
+      return (
+        <div className="glass" style={{ height:44, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', borderBottom:'1px solid rgba(0,245,255,.18)', flexShrink:0, position:'relative', overflow:'hidden' }}>
+          {/* Scanline */}
+          <div style={{ position:'absolute', inset:0, pointerEvents:'none', background:'repeating-linear-gradient(0deg,rgba(0,245,255,.015) 0px,rgba(0,245,255,.015) 1px,transparent 1px,transparent 4px)', zIndex:0 }} />
+
+          <div style={{ display:'flex', alignItems:'center', gap:10, zIndex:1 }}>
+            <div style={{ width:8, height:8, background:C.cyan, borderRadius:1, boxShadow:`0 0 8px ${C.cyan}`, transform:'rotate(45deg)' }} />
+            <span style={{ fontFamily:'Space Mono', fontSize:15, fontWeight:700, letterSpacing:'.18em', color:C.cyan, textShadow:`0 0 20px ${C.cyan}` }}>AGENT NEXUS</span>
+            <span style={{ fontSize:9, color:'#3A4A5A', letterSpacing:'.1em', marginLeft:4 }}>MISSION CONTROL v2.1</span>
+          </div>
+
+          <div style={{ display:'flex', gap:28, zIndex:1 }}>
+            {items.map(item => (
+              <div key={item.label} style={{ textAlign:'center' }}>
+                <div style={{ fontSize:9, color:'#4A5568', letterSpacing:'.08em', fontFamily:'Space Mono', marginBottom:1 }}>{item.label}</div>
+                <div style={{ fontSize:14, fontWeight:700, color: item.color, fontFamily:'Space Mono',
+                  textShadow:`0 0 10px ${item.color}`, animation: animDone ? 'count-up .5s ease' : 'none' }}>
+                  {item.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontSize:9, color:'#3A4A5A', fontFamily:'IBM Plex Mono', zIndex:1 }}>
+            {new Date().toUTCString().slice(0,25)}
+          </div>
+        </div>
+      );
+    };
+
+    // ─── GRAPH FILTER BAR ─────────────────────────────────────────────────────────
+    const GraphFilterBar = ({ filters, onToggle, searchTerm, onSearch, onReset }) => (
+      <div style={{ padding:'7px 12px', borderBottom:'1px solid rgba(0,245,255,.08)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0, background:'rgba(8,11,18,.6)' }}>
+        {['agent','skill','memory','task'].map(type => (
+          <button key={type} className={`filter-btn ${filters[type]?`active-${type}`:''}`}
+            onClick={() => onToggle(type)}>
+            {{ agent:'◈ AGENT', skill:'● SKILL', memory:'◆ MEM', task:'▣ TASK' }[type]}
+          </button>
+        ))}
+        <input className="search-input" placeholder="Search nodes..." value={searchTerm} onChange={e=>onSearch(e.target.value)} style={{marginLeft:4}} />
+        <button className="filter-btn" onClick={onReset} style={{marginLeft:'auto'}}>RESET VIEW</button>
+      </div>
+    );
+
+    // ─── SPIN UP MODAL ────────────────────────────────────────────────────────────
+    const SpinUpModal = ({ onClose, onConfirm }) => {
+      const [name, setName] = useState('');
+      const [emoji, setEmoji] = useState('🤖');
+      const [agentCount, setAgentCount] = useState(2);
+      const [skills, setSkills] = useState('reasoning, planning');
+      const emojis = ['🤖','🧠','🔮','🛸','⚗️','🌐','🔭','💡','🧬','🔑'];
+
+      const handleSubmit = () => {
+        if (!name.trim()) return;
+        onConfirm({ name: name.trim(), emoji, agentCount, skills: skills.split(',').map(s=>s.trim()).filter(Boolean) });
+        onClose();
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{ fontFamily:'Space Mono', fontSize:14, fontWeight:700, color:C.cyan, letterSpacing:'.1em', marginBottom:20 }}>
+              + SPIN UP TEAM
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div>
+                <label style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', fontFamily:'Space Mono', display:'block', marginBottom:5 }}>TEAM NAME</label>
+                <input className="modal-input" value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Analysis Strike Team" autoFocus />
+              </div>
+
+              <div>
+                <label style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', fontFamily:'Space Mono', display:'block', marginBottom:5 }}>ICON</label>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {emojis.map(e => (
+                    <button key={e} onClick={()=>setEmoji(e)} style={{ fontSize:18, background:emoji===e?'rgba(0,245,255,.15)':'rgba(255,255,255,.04)', border:`1px solid ${emoji===e?C.cyan:'rgba(255,255,255,.1)'}`, borderRadius:4, padding:'4px 8px', cursor:'pointer' }}>{e}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', fontFamily:'Space Mono', display:'block', marginBottom:5 }}>AGENT COUNT: {agentCount}</label>
+                <input type="range" min={1} max={6} value={agentCount} onChange={e=>setAgentCount(+e.target.value)}
+                  style={{ width:'100%', accentColor:C.cyan }} />
+              </div>
+
+              <div>
+                <label style={{ fontSize:9, color:'#4A5568', letterSpacing:'.1em', fontFamily:'Space Mono', display:'block', marginBottom:5 }}>SKILL TAGS (comma-separated)</label>
+                <input className="modal-input" value={skills} onChange={e=>setSkills(e.target.value)} placeholder="reasoning, planning, code-gen" />
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:10, marginTop:20 }}>
+              <button className="btn-primary" style={{ flex:1 }} onClick={handleSubmit}>DEPLOY TEAM</button>
+              <button className="btn-secondary" style={{ flex:0 }} onClick={onClose}>CANCEL</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── APP ──────────────────────────────────────────────────────────────────────
+    const App = () => {
+      const [teams, setTeams] = useState(TEAMS);
+      const [nodes, setNodes] = useState(INITIAL_NODES);
+      const [edges, setEdges] = useState(INITIAL_EDGES);
+      const [selectedNode, setSelectedNode] = useState(null);
+      const [selectedTeam, setSelectedTeam] = useState(null);
+      const [focusTeam, setFocusTeam] = useState(null);
+      const [filters, setFilters] = useState({ agent:true, skill:true, memory:true, task:true });
+      const [searchTerm, setSearchTerm] = useState('');
+      const [feed, setFeed] = useState(INITIAL_FEED);
+      const [notes, setNotes] = useState({});
+      const [showModal, setShowModal] = useState(false);
+      const [animDone, setAnimDone] = useState(false);
+      const [sparkData, setSparkData] = useState(() => Object.fromEntries(TEAMS.map(t=>[t.id,genSpark()])));
+      const feedIdRef = useRef(100);
+
+      // Animated stats
+      const stats = useMemo(() => ({
+        agents: nodes.filter(n=>n.type==='agent').length,
+        tasks:  nodes.filter(n=>n.type==='task'&&n.status==='ACTIVE').length,
+        memory: nodes.filter(n=>n.type==='memory').length,
+        skills: nodes.filter(n=>n.type==='skill').length,
+      }), [nodes]);
+
+      useEffect(() => { setTimeout(()=>setAnimDone(true), 800); }, []);
+
+      // Live simulation tick
+      useEffect(() => {
+        const interval = setInterval(() => {
+          const agentNodes = nodes.filter(n=>n.type==='agent');
+          const agentName = pick(agentNodes)?.label || 'Unknown';
+          const evFn = pick(LIVE_EVENTS);
+          const msg = evFn(agentName);
+          const newEv = { id: ++feedIdRef.current, ts: Date.now(), msg };
+          setFeed(prev => [newEv, ...prev].slice(0,30));
+
+          // Update sparklines
+          setSparkData(prev => {
+            const next = {};
+            Object.keys(prev).forEach(tid => {
+              const arr = [...prev[tid].slice(1), rnd(5,100)];
+              next[tid] = arr;
+            });
+            return next;
+          });
+
+          // Occasionally bump task queue
+          if (Math.random() < .2) {
+            setTeams(prev => prev.map(t => ({
+              ...t,
+              taskQueue: Math.max(0, t.taskQueue + (Math.random()<.5?1:-1))
+            })));
+          }
+        }, 3000);
+        return () => clearInterval(interval);
+      }, [nodes]);
+
+      const handleSelectTeam = useCallback(teamId => {
+        setSelectedTeam(prev => prev === teamId ? null : teamId);
+        setFocusTeam(teamId);
+        setTimeout(()=>setFocusTeam(null), 100);
+      }, []);
+
+      const handleToggleFilter = useCallback(type => {
+        setFilters(prev => ({ ...prev, [type]: !prev[type] }));
+      }, []);
+
+      const handleSpinUp = useCallback(({ name, emoji, agentCount, skills }) => {
+        const tid = `team-${Date.now()}`;
+        const agentIds = [];
+        const newNodes = [];
+        const newEdges = [];
+        const agentNamePool = ['Nova','Kira','Zeta','Orion','Lyra','Clio','Dex','Rex','Ava','Mira'];
+
+        for (let i = 0; i < agentCount; i++) {
+          const aid = `a-${Date.now()}-${i}`;
+          agentIds.push(aid);
+          newNodes.push({ id:aid, type:'agent', label:pick(agentNamePool), team:tid, role:'Specialist', model:'claude-sonnet-4', uptime:0, tasksDone:0 });
+        }
+
+        // Add skill edges
+        skills.forEach(sk => {
+          const existing = nodes.find(n=>n.type==='skill'&&n.label===sk);
+          const skId = existing ? existing.id : `sk-${Date.now()}-${sk}`;
+          if (!existing) newNodes.push({ id:skId, type:'skill', label:sk, proficiency:{} });
+          agentIds.slice(0,2).forEach(aid => {
+            newEdges.push({ id:`e-${Date.now()}-${Math.random()}`, s:aid, s2:skId, type:'has_skill', w:.7 });
+          });
+        });
+
+        const newTeam = { id:tid, name, emoji, agents:agentIds, status:'SPINNING UP', taskQueue:0 };
+        setTeams(prev => [...prev, newTeam]);
+        setNodes(prev => [...prev, ...newNodes]);
+        setEdges(prev => [...prev, ...newEdges]);
+        setSparkData(prev => ({ ...prev, [tid]: genSpark() }));
+
+        const spawnMsg = { id:++feedIdRef.current, ts:Date.now(), msg:`Team "${name}" spinning up: ${agentCount} agents deploying` };
+        setFeed(prev => [spawnMsg, ...prev]);
+
+        // Transition to ACTIVE after delay
+        setTimeout(() => {
+          setTeams(prev => prev.map(t => t.id===tid ? {...t, status:'ACTIVE'} : t));
+          setFeed(prev => [{ id:++feedIdRef.current, ts:Date.now(), msg:`Team "${name}" is now ACTIVE` }, ...prev]);
+        }, 3000);
+      }, [nodes]);
+
+      const handleNoteChange = useCallback((nodeId, text) => {
+        setNotes(prev => ({ ...prev, [nodeId]: text }));
+      }, []);
+
+      return (
+        <div style={{ width:'100vw', height:'100vh', display:'flex', flexDirection:'column', background:C.bg, position:'relative', overflow:'hidden' }}>
+          {/* Mesh background overlay */}
+          <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:0,
+            backgroundImage:`radial-gradient(circle at 20% 30%, rgba(0,245,255,.03) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(168,85,247,.03) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(57,255,20,.02) 0%, transparent 60%)`,
+            backgroundSize:'100% 100%' }} />
+          <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:0,
+            background:'repeating-linear-gradient(0deg,rgba(0,245,255,.008) 0px,rgba(0,245,255,.008) 1px,transparent 1px,transparent 6px)' }} />
+
+          {/* Top Bar */}
+          <div style={{ zIndex:10, flexShrink:0 }}>
+            <TopBar stats={stats} animDone={animDone} />
+          </div>
+
+          {/* Main content */}
+          <div style={{ flex:1, display:'flex', overflow:'hidden', zIndex:1, minHeight:0 }}>
+            <LeftPanel teams={teams} selectedTeam={selectedTeam} sparkData={sparkData}
+              onSelectTeam={handleSelectTeam} onSpinUp={()=>setShowModal(true)} />
+
+            {/* Center: filter bar + graph */}
+            <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
+              <GraphFilterBar filters={filters} onToggle={handleToggleFilter}
+                searchTerm={searchTerm} onSearch={setSearchTerm}
+                onReset={()=>{ setFilters({agent:true,skill:true,memory:true,task:true}); setSearchTerm(''); }} />
+              <GraphPanel
+                nodes={nodes} edges={edges}
+                selectedNode={selectedNode} onSelectNode={setSelectedNode}
+                filters={filters} searchTerm={searchTerm}
+                focusTeam={focusTeam}
+              />
+            </div>
+
+            <RightPanel selectedNode={selectedNode} nodes={nodes} notes={notes}
+              onNoteChange={handleNoteChange} feed={feed} sparkNodes={nodes} />
+          </div>
+
+          {/* Modal */}
+          {showModal && <SpinUpModal onClose={()=>setShowModal(false)} onConfirm={handleSpinUp} />}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
